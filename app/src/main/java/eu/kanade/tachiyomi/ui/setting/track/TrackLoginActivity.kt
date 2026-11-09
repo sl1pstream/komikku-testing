@@ -26,6 +26,7 @@ class TrackLoginActivity : BaseOAuthLoginActivity() {
                 when (uri.host) {
                     // KMK -->
                     "comick-auth" -> handleComick(data["code"], data["state"])
+                    "mangabaka-auth" -> handleMangaBaka(data["code"], data["state"])
                     // KMK <--
                     "anilist-auth" -> handleAniList(data["access_token"])
                     "bangumi-auth" -> handleBangumi(data["code"])
@@ -47,6 +48,18 @@ class TrackLoginActivity : BaseOAuthLoginActivity() {
             } catch (e: Exception) {
                 toast(e.message)
             }
+        }
+    }
+    private suspend fun handleMangaBaka(code: String?, state: String?) {
+        val tracker = trackerManager.mangaBaka
+        if (code != null && state != null && tracker.verifyOAuthState(state)) {
+            try {
+                tracker.login(code)
+            } catch (e: Exception) {
+                toast(e.message)
+            }
+        } else {
+            tracker.logout()
         }
     }
     // KMK <--
