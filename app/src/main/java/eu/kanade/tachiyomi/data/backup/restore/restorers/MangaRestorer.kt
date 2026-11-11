@@ -527,6 +527,11 @@ class MangaRestorer(
                 }
             }
         }
+        // KMK --> Track changes made by a manual restore need an incremental sync timestamp.
+        if (!isSync && (newTracks.isNotEmpty() || existingTracks.isNotEmpty())) {
+            handler.await { mangasQueries.touchLastModifiedAt(manga.id) }
+        }
+        // KMK <--
     }
 
     // SY -->
