@@ -43,9 +43,9 @@ master  (upstream, includes the global-search fixes)
        = integration/search-trackers
 ```
 
-Historically this branch was created from a `fix/global-search` branch before `master` was
-synced. Those search commits have since been merged upstream and are part of `master`, so
-that branch has been deleted and this one is simply "`master` + both trackers".
+Historically this branch was created from an earlier search-fix branch before `master` was
+synced. Those commits have since been merged upstream and are part of `master`, so this
+branch is now simply "`master` + both trackers".
 
 ## Why this branch exists
 
