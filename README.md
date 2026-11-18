@@ -32,6 +32,7 @@ branch and update this section if it drifts.
 | `master` | Fork's master, synced with upstream. **Includes the upstream global-search fixes** (stuck sources, leaked search threads, result-update races). |
 | `feat/comick-tracker` | Comick tracker |
 | `feat/mangabaka-tracker-clean` | MangaBaka tracker |
+| `feat/tracker-ordering` | User-configurable tracker order (drag-to-reorder in Settings > Tracking) |
 | `feat/syncyomi-v2-clean` | *Not included* — branch has been deleted |
 
 Conceptually the branch is just:
