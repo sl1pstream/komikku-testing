@@ -32,7 +32,6 @@ branch and update this section if it drifts.
 | `master` | Fork's master, synced with upstream. **Includes the upstream global-search fixes** (stuck sources, leaked search threads, result-update races). |
 | `feat/comick-tracker` | Comick tracker |
 | `feat/mangabaka-tracker-clean` | MangaBaka tracker |
-| `fix/global-search` | *Legacy.* Its 3 commits are now part of `master`, so it adds nothing to this branch. Kept for history only. |
 | `feat/syncyomi-v2-clean` | *Not included* — branch has been deleted |
 
 Conceptually the branch is just:
@@ -44,9 +43,9 @@ master  (upstream, includes the global-search fixes)
        = integration/search-trackers
 ```
 
-Historically it was created from `fix/global-search` before `master` was synced. Since those
-search commits are now ancestors of `master`, the branch is effectively "`master` + both
-trackers" — the `fix/global-search` parent contributes no extra content.
+Historically this branch was created from a `fix/global-search` branch before `master` was
+synced. Those search commits have since been merged upstream and are part of `master`, so
+that branch has been deleted and this one is simply "`master` + both trackers".
 
 ## Why this branch exists
 
