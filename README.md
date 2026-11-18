@@ -6,29 +6,47 @@
 > For the app itself, its features and its documentation, see the upstream project.
 
 This branch is **not** a feature branch. It is a disposable, on-demand build target whose
-only job is to combine several in-flight feature branches into a single installable APK,
-so they can be tested together before any of them is merged upstream.
+only job is to combine the fork's `master` with in-flight tracker branches into a single
+installable APK, so they can be tested together before any of them is merged upstream.
 
 ---
+
+## Current state
+
+| Item | Value |
+| --- | --- |
+| Latest code merge | `8ae2850` — *Merge branch 'master' into integration/search-trackers* |
+| Local vs `origin` | **Identical** (in sync — pushing reports "Everything up-to-date") |
+| Base | `master` at `290267d`, synced with upstream `komikku-app/komikku` |
+| Search fixes | Present — the 4 search files are byte-identical to `master` |
+| Trackers | Comick + MangaBaka both registered and compiling |
+| Build | `assembleReleaseTest`; debug-signed APKs built from the `8ae2850` merge |
+
+Commit hashes and the table above describe the state at the time of writing; regenerate the
+branch and update this section if it drifts.
 
 ## What it contains
 
 | Branch | Purpose |
 | --- | --- |
-| `fix/global-search` | Upstream global-search fixes (stuck sources, leaked search threads, result-update race conditions) |
+| `master` | Fork's master, synced with upstream. **Includes the upstream global-search fixes** (stuck sources, leaked search threads, result-update races). |
 | `feat/comick-tracker` | Comick tracker |
 | `feat/mangabaka-tracker-clean` | MangaBaka tracker |
-| `feat/syncyomi-v2-clean` | *Not included* (deliberately excluded for now) |
+| `fix/global-search` | *Legacy.* Its 3 commits are now part of `master`, so it adds nothing to this branch. Kept for history only. |
+| `feat/syncyomi-v2-clean` | *Not included* — branch has been deleted |
 
-Everything sits on top of the fork's `master`:
+Conceptually the branch is just:
 
 ```
-master
-  └─ fix/global-search                     (upstream search fixes)
-       ├─ merge feat/comick-tracker
-       └─ merge feat/mangabaka-tracker-clean   ← tracker conflicts resolved here
-            = integration/search-trackers
+master  (upstream, includes the global-search fixes)
+  ├─ merge feat/comick-tracker
+  └─ merge feat/mangabaka-tracker-clean   ← tracker conflicts resolved here
+       = integration/search-trackers
 ```
+
+Historically it was created from `fix/global-search` before `master` was synced. Since those
+search commits are now ancestors of `master`, the branch is effectively "`master` + both
+trackers" — the `fix/global-search` parent contributes no extra content.
 
 ## Why this branch exists
 
@@ -50,42 +68,45 @@ Three jobs, none of which the feature branches can do on their own:
 
 ## What this branch is *not*
 
-- It does **not** stay in sync with the feature branches. Git only changes it when you tell it to.
+- It does **not** stay in sync with `master` or the feature branches. Git only changes it
+  when you tell it to; syncing `master` does not propagate here automatically.
 - It should **never** be merged back into a feature branch. Merging is one-way:
   features → integration.
-- It is **not** built by CI. `.github/workflows/build_push.yml` only triggers on `master`.
+- It is **not** built by CI. `.github/workflows/build_push.yml` only triggers on `master`,
+  and Actions has produced no runs on this fork.
 - It is disposable. Deleting and recreating it costs a few commands.
 
 ## Updating it
 
-### Case A — a feature branch gained commits (normal evolution)
+### Case A — a feature branch (or `master`) gained commits
 
 ```bash
+git fetch origin
 git checkout integration/search-trackers
-git merge origin/feat/comick-tracker        # or whichever branch changed
+git merge master                            # or origin/feat/comick-tracker, etc.
 ./gradlew assembleReleaseTest
 ```
 
 This normally auto-merges, because the earlier conflict resolutions are already part of this
-branch's history. If the same files conflict again, resolve them the same way: keep both
+branch's history. If the tracker files conflict again, resolve them the same way: keep both
 trackers.
 
-### Case B — a feature branch was rewritten (force-push / rebase)
+### Case B — a branch was rewritten (force-push / rebase)
 
 Rewriting a branch that is already merged here leaves the old commits in this branch's
 ancestry. Rebuild the integration branch from scratch instead of merging:
 
 ```bash
-git checkout -B integration/search-trackers fix/global-search
+git checkout -B integration/search-trackers master
 git merge origin/feat/comick-tracker
 git merge origin/feat/mangabaka-tracker-clean
-# resolve TrackManager.kt, TrackLoginActivity.kt, SettingsTrackingScreen.kt
+# resolve TrackerManager.kt, TrackLoginActivity.kt, SettingsTrackingScreen.kt
 ```
 
 ### Case C — only a subset is wanted
 
 Just don't merge the branch you don't need, or recreate the integration branch from the
-feature branches you do want.
+branches you do want.
 
 ### Tip: remember conflict resolutions
 
@@ -105,23 +126,40 @@ The verification build for this branch is the `releaseTest` build type
 ANDROID_HOME=$HOME/Android/Sdk ./gradlew assembleReleaseTest
 ```
 
-APKs land in `app/build/outputs/apk/releaseTest/`. To make one installable locally:
+APKs land in `app/build/outputs/apk/releaseTest/`. To make them installable locally:
 
 ```bash
-$ANDROID_HOME/build-tools/<version>/apksigner sign \
-  --ks ~/.android/debug.keystore \
-  --ks-pass pass:android --key-pass pass:android \
-  --ks-key-alias androiddebugkey \
-  --out app-universal-releaseTest-signed.apk \
-  app-universal-releaseTest-unsigned.apk
+cd app/build/outputs/apk/releaseTest
+for f in *-releaseTest-unsigned.apk; do
+  out="${f/-unsigned/-signed}"
+  $HOME/Android/Sdk/build-tools/<version>/apksigner sign \
+    --ks ~/.android/debug.keystore \
+    --ks-pass pass:android --key-pass pass:android \
+    --ks-key-alias androiddebugkey --v4-signing-enabled false \
+    --out "$out" "$f"
+done
 ```
 
 Because the debug keystore is used, uninstall any existing `app.komikku.rt` signed with a
 different key before installing.
 
+## Verifying the combination
+
+```bash
+# search files must be identical to master
+git diff --stat master HEAD -- \
+  app/src/main/java/eu/kanade/tachiyomi/ui/browse/feed/FeedScreenModel.kt \
+  app/src/main/java/eu/kanade/tachiyomi/ui/browse/source/feed/SourceFeedScreenModel.kt \
+  app/src/main/java/eu/kanade/tachiyomi/ui/browse/source/globalsearch/SearchScreenModel.kt \
+  app/src/main/java/exh/recs/RecommendsScreenModel.kt
+
+# everything that differs should be tracker-related (+ this README)
+git diff --stat master HEAD
+```
+
 ## Rules of thumb
 
-- Merge feature branches **into** this branch; never the other way around.
+- Merge branches **into** this branch; never the other way around.
 - Keep this branch local or clearly marked if pushed — it is a build artifact, not a
   contribution.
 - Regenerate it whenever a constituent branch changes, then rebuild and retest.
