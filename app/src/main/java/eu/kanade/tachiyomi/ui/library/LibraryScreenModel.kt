@@ -640,7 +640,9 @@ class LibraryScreenModel(
 
         val defaultTrackerScoreSortValue = -1.0
         val trackerScores by lazy {
-            val trackerMap = trackerManager.getAll(loggedInTrackerIds).associateBy { e -> e.id }
+            // KMK -->
+            val trackerMap = trackerManager.getAllIncludingLocal(loggedInTrackerIds).associateBy { e -> e.id }
+            // KMK <--
             trackMap.mapValues { entry ->
                 when {
                     entry.value.isEmpty() -> null
