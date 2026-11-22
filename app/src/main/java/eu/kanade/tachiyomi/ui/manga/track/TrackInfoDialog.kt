@@ -2,26 +2,37 @@ package eu.kanade.tachiyomi.ui.manga.track
 
 import android.app.Application
 import android.content.Context
+import android.net.Uri // KMK --> // KMK <--
+import androidx.activity.compose.rememberLauncherForActivityResult // KMK --> // KMK <--
+import androidx.activity.result.contract.ActivityResultContracts // KMK --> // KMK <--
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize // KMK --> // KMK <--
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.rememberScrollState // KMK --> // KMK <--
 import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.verticalScroll // KMK --> // KMK <--
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack // KMK --> // KMK <--
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.Button // KMK --> // KMK <--
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton // KMK --> // KMK <--
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField // KMK --> // KMK <--
 import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar // KMK --> // KMK <--
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.collectAsState
@@ -96,6 +107,7 @@ import tachiyomi.i18n.MR
 import tachiyomi.i18n.kmk.KMR // KMK --> // KMK <--
 import tachiyomi.presentation.core.components.LabeledCheckbox
 import tachiyomi.presentation.core.components.material.AlertDialogContent
+import tachiyomi.presentation.core.components.material.Scaffold // KMK --> // KMK <--
 import tachiyomi.presentation.core.components.material.padding
 import tachiyomi.presentation.core.i18n.stringResource
 import uy.kohesive.injekt.Injekt
@@ -831,16 +843,16 @@ data class TrackerSearchScreen(
             supportsPrivateTracking = screenModel.supportsPrivateTracking,
             // KMK -->
             createLabel = if (screenModel.canCreate && textFieldState.text.isNotBlank()) {
-                stringResource(KMR.strings.local_tracker_create_title, textFieldState.text.toString())
+                stringResource(KMR.strings.local_tracker_create_action)
+            } else {
+                null
+            },
+            onCreate = if (screenModel.canCreate) {
+                { navigator.push(TrackerCreateScreen(mangaId, serviceId, textFieldState.text.toString())) }
             } else {
                 null
             },
             // KMK <--
-            onCreate = if (screenModel.canCreate) {
-                { screenModel.createTracking(textFieldState.text.toString()) { navigator.pop() } }
-            } else {
-                null
-            },
         )
     }
 
@@ -890,22 +902,6 @@ data class TrackerSearchScreen(
             screenModelScope.launchNonCancellable { tracker.register(item, mangaId) }
         }
 
-        // KMK -->
-        fun createTracking(query: String, onCreated: () -> Unit) {
-            val creator = creatableTracker ?: return
-            if (query.isBlank()) return
-            screenModelScope.launch {
-                try {
-                    val item = withIOContext { creator.create(query) }
-                    tracker.register(item, mangaId)
-                    onCreated()
-                } catch (e: Exception) {
-                    withUIContext { Injekt.get<Application>().toast(e.message) }
-                }
-            }
-        }
-        // KMK <--
-
         fun updateSelection(selected: TrackSearch) {
             mutableState.update { it.copy(selected = selected) }
         }
@@ -917,6 +913,132 @@ data class TrackerSearchScreen(
         )
     }
 }
+
+// KMK -->
+private data class TrackerCreateScreen(
+    private val mangaId: Long,
+    private val serviceId: Long,
+    private val initialTitle: String,
+) : Screen() {
+
+    @Composable
+    override fun Content() {
+        val navigator = LocalNavigator.currentOrThrow
+        val context = LocalContext.current
+        val tracker = remember { Injekt.get<TrackerManager>().get(serviceId)!! }
+        val screenModel = rememberScreenModel { Model(mangaId, tracker) }
+        var title by remember { mutableStateOf(initialTitle) }
+        var description by remember { mutableStateOf("") }
+        var coverUri by remember { mutableStateOf<Uri?>(null) }
+        var isCreating by remember { mutableStateOf(false) }
+        val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) {
+            coverUri = it
+        }
+
+        Scaffold(
+            modifier = Modifier.windowInsetsPadding(WindowInsets.systemBars),
+            topBar = {
+                TopAppBar(
+                    navigationIcon = {
+                        IconButton(onClick = navigator::pop) {
+                            Icon(imageVector = Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = null)
+                        }
+                    },
+                    title = { Text(text = stringResource(KMR.strings.local_tracker_create_action)) },
+                )
+            },
+        ) { contentPadding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(contentPadding)
+                    .verticalScroll(rememberScrollState())
+                    .padding(MaterialTheme.padding.medium),
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.medium),
+            ) {
+                OutlinedTextField(
+                    value = title,
+                    onValueChange = { title = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text(stringResource(KMR.strings.local_tracker_create_title_label)) },
+                    singleLine = true,
+                )
+                OutlinedTextField(
+                    value = description,
+                    onValueChange = { description = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text(stringResource(KMR.strings.local_tracker_create_description_label)) },
+                    minLines = 4,
+                )
+                Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small)) {
+                    Text(text = stringResource(KMR.strings.local_tracker_create_cover_label))
+                    TextButton(onClick = { imagePicker.launch("image/*") }) {
+                        Text(
+                            text = if (coverUri == null) {
+                                stringResource(KMR.strings.local_tracker_create_select_cover)
+                            } else {
+                                coverUri?.lastPathSegment ?: stringResource(KMR.strings.local_tracker_create_cover_label)
+                            },
+                        )
+                    }
+                }
+                Button(
+                    onClick = {
+                        isCreating = true
+                        screenModel.create(title, description, coverUri, context.contentResolver) { success ->
+                            isCreating = false
+                            if (success) navigator.pop()
+                        }
+                    },
+                    enabled = title.isNotBlank() && !isCreating,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    if (isCreating) {
+                        CircularProgressIndicator()
+                    } else {
+                        Text(text = stringResource(KMR.strings.local_tracker_create_action))
+                    }
+                }
+            }
+        }
+    }
+
+    private class Model(
+        private val mangaId: Long,
+        private val tracker: Tracker,
+    ) : ScreenModel {
+
+        fun create(
+            title: String,
+            description: String,
+            coverUri: Uri?,
+            contentResolver: android.content.ContentResolver,
+            onFinished: (Boolean) -> Unit,
+        ) {
+            val creator = tracker as? CreatableTracker ?: return
+            screenModelScope.launch {
+                try {
+                    val coverImage = coverUri?.let { uri ->
+                        withIOContext {
+                            contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                                ?: throw IllegalStateException("Could not read selected cover image")
+                        }
+                    }
+                    val coverMimeType = coverUri?.let(contentResolver::getType)
+                    val item = withIOContext { creator.create(title, description, coverImage, coverMimeType) }
+                    tracker.register(item, mangaId)
+                    withUIContext { onFinished(true) }
+                } catch (e: Exception) {
+                    withUIContext {
+                        Injekt.get<Application>().toast(e.message)
+                        onFinished(false)
+                    }
+                }
+            }
+        }
+    }
+}
+// KMK <--
 
 private data class TrackerRemoveScreen(
     private val mangaId: Long,
