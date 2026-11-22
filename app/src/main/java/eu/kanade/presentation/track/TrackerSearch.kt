@@ -97,6 +97,10 @@ fun TrackerSearch(
     onConfirmSelection: (private: Boolean) -> Unit,
     onDismissRequest: () -> Unit,
     supportsPrivateTracking: Boolean,
+    // KMK -->
+    createLabel: String? = null,
+    onCreate: (() -> Unit)? = null,
+    // KMK <--
 ) {
     val focusManager = LocalFocusManager.current
     val focusRequester = remember { FocusRequester() }
@@ -204,15 +208,36 @@ fun TrackerSearch(
             val availableTracks = queryResult.getOrNull()
             if (availableTracks != null) {
                 if (availableTracks.isEmpty()) {
-                    EmptyScreen(
-                        modifier = Modifier.padding(innerPadding),
-                        stringRes = MR.strings.no_results_found,
-                    )
+                    Column(modifier = Modifier.padding(innerPadding)) {
+                        // KMK -->
+                        if (createLabel != null && onCreate != null) {
+                            Button(onClick = onCreate, modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+                                Text(createLabel)
+                            }
+                        }
+                        EmptyScreen(
+                            modifier = Modifier.weight(1f),
+                            stringRes = MR.strings.no_results_found,
+                        )
+                        // KMK <--
+                    }
                 } else {
                     ScrollbarLazyColumn(
                         contentPadding = innerPadding + PaddingValues(vertical = 12.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
+                        // KMK -->
+                        if (createLabel != null && onCreate != null) {
+                            item(key = "tracker-create") {
+                                Button(
+                                    onClick = onCreate,
+                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+                                ) {
+                                    Text(createLabel)
+                                }
+                            }
+                        }
+                        // KMK <--
                         items(
                             items = availableTracks,
                             key = { "tracker-search-${it.hashCode()}" },

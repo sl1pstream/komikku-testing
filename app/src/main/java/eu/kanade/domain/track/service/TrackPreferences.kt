@@ -35,6 +35,10 @@ class TrackPreferences(
 
     fun trackToken(tracker: Tracker) = preferenceStore.getString(Preference.privateKey("track_token_${tracker.id}"), "")
 
+    // KMK -->
+    fun localTrackerUrl() = preferenceStore.getString(Preference.privateKey("local_tracker_url"), "")
+    // KMK <--
+
     fun anilistScoreType() = preferenceStore.getString("anilist_score_type", Anilist.POINT_10)
 
     // KMK -->
