@@ -21,6 +21,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton // KMK --> // KMK <--
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.getValue
@@ -111,6 +112,14 @@ object SettingsTrackingScreen : SearchableSettings {
                         onDismissRequest = { dialog = null },
                     )
                 }
+                // KMK -->
+                is LocalServerDialog -> {
+                    LocalTrackerDialog(
+                        tracker = tracker,
+                        onDismissRequest = { dialog = null },
+                    )
+                }
+                // KMK <--
             }
         }
 
@@ -161,6 +170,13 @@ object SettingsTrackingScreen : SearchableSettings {
             Preference.PreferenceGroup(
                 title = stringResource(MR.strings.services),
                 preferenceItems = persistentListOf(
+                    // KMK -->
+                    Preference.PreferenceItem.TrackerPreference(
+                        tracker = trackerManager.local,
+                        login = { dialog = LocalServerDialog(trackerManager.local) },
+                        logout = { dialog = LocalServerDialog(trackerManager.local) },
+                    ),
+                    // KMK <--
                     Preference.PreferenceItem.TrackerPreference(
                         tracker = trackerManager.myAnimeList,
                         login = {
@@ -216,6 +232,104 @@ object SettingsTrackingScreen : SearchableSettings {
             ),
         )
     }
+
+    // KMK -->
+    @Composable
+    private fun LocalTrackerDialog(
+        tracker: eu.kanade.tachiyomi.data.track.local.LocalManga,
+        onDismissRequest: () -> Unit,
+    ) {
+        val context = LocalContext.current
+        val scope = rememberCoroutineScope()
+        val connectionFailed = stringResource(KMR.strings.local_tracker_connection_failed)
+        val invalidAddress = stringResource(KMR.strings.local_tracker_invalid_address)
+        var address by remember { mutableStateOf(TextFieldValue(tracker.normalizedServerUrl())) }
+        var error by remember { mutableStateOf<String?>(null) }
+        var processing by remember { mutableStateOf(false) }
+
+        AlertDialog(
+            onDismissRequest = onDismissRequest,
+            title = { Text(stringResource(KMR.strings.local_tracker_server_title)) },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        value = address,
+                        onValueChange = {
+                            address = it
+                            error = null
+                        },
+                        label = { Text(stringResource(KMR.strings.local_tracker_server_address)) },
+                        placeholder = { Text(stringResource(KMR.strings.local_tracker_server_placeholder)) },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(
+                            imeAction = ImeAction.Done,
+                            keyboardType = KeyboardType.Uri,
+                        ),
+                        isError = error != null,
+                        supportingText = { error?.let { Text(it) } },
+                    )
+                    if (tracker.isLoggedIn) {
+                        TextButton(
+                            onClick = {
+                                tracker.logout()
+                                onDismissRequest()
+                            },
+                            enabled = !processing,
+                        ) {
+                            Text(stringResource(KMR.strings.local_tracker_disconnect))
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(
+                        onClick = {
+                            scope.launchIO {
+                                processing = true
+                                try {
+                                    tracker.testConnection(address.text)
+                                    withUIContext { context.toast(KMR.strings.local_tracker_connection_success) }
+                                } catch (_: Exception) {
+                                    withUIContext { error = connectionFailed }
+                                } finally {
+                                    withUIContext { processing = false }
+                                }
+                            }
+                        },
+                        enabled = !processing,
+                    ) {
+                        Text(
+                            stringResource(
+                                if (processing) {
+                                    KMR.strings.local_tracker_testing
+                                } else {
+                                    KMR.strings.local_tracker_test_connection
+                                },
+                            ),
+                        )
+                    }
+                    Button(
+                        onClick = {
+                            try {
+                                tracker.saveServerUrl(address.text)
+                                onDismissRequest()
+                            } catch (_: IllegalArgumentException) {
+                                error = invalidAddress
+                            }
+                        },
+                        enabled = !processing,
+                    ) {
+                        Text(stringResource(MR.strings.action_save))
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismissRequest) { Text(stringResource(MR.strings.action_cancel)) }
+            },
+        )
+    }
+    // KMK <--
 
     @Composable
     private fun TrackingLoginDialog(
@@ -389,3 +503,9 @@ private data class LoginDialog(
 private data class LogoutDialog(
     val tracker: Tracker,
 )
+
+// KMK -->
+private data class LocalServerDialog(
+    val tracker: eu.kanade.tachiyomi.data.track.local.LocalManga,
+)
+// KMK <--

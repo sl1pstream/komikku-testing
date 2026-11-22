@@ -54,6 +54,7 @@ import eu.kanade.presentation.track.TrackScoreSelector
 import eu.kanade.presentation.track.TrackStatusSelector
 import eu.kanade.presentation.track.TrackerSearch
 import eu.kanade.presentation.util.Screen
+import eu.kanade.tachiyomi.data.track.CreatableTracker // KMK --> // KMK <--
 import eu.kanade.tachiyomi.data.track.DeletableTracker
 import eu.kanade.tachiyomi.data.track.EnhancedTracker
 import eu.kanade.tachiyomi.data.track.Tracker
@@ -92,6 +93,7 @@ import tachiyomi.domain.track.interactor.DeleteTrack
 import tachiyomi.domain.track.interactor.GetTracks
 import tachiyomi.domain.track.model.Track
 import tachiyomi.i18n.MR
+import tachiyomi.i18n.kmk.KMR // KMK --> // KMK <--
 import tachiyomi.presentation.core.components.LabeledCheckbox
 import tachiyomi.presentation.core.components.material.AlertDialogContent
 import tachiyomi.presentation.core.components.material.padding
@@ -388,7 +390,11 @@ data class TrackInfoDialogHomeScreen(
         private suspend fun List<Track>.mapToTrackItem(): List<TrackItem> {
             val loggedInTrackers = trackerManager.loggedInTrackers()
             val source = sourceManager.getOrStub(sourceId)
-            return loggedInTrackers
+            // KMK -->
+            return (loggedInTrackers + trackerManager.local.takeIf { it.isLoggedIn })
+                .filterNotNull()
+                .distinctBy { it.id }
+                // KMK <--
                 // Map to TrackItem
                 .map { service -> TrackItem(find { it.trackerId == service.id }, service) }
                 // Show only if the service supports this manga's source
@@ -821,6 +827,18 @@ data class TrackerSearchScreen(
             },
             onDismissRequest = navigator::pop,
             supportsPrivateTracking = screenModel.supportsPrivateTracking,
+            // KMK -->
+            createLabel = if (screenModel.canCreate && textFieldState.text.isNotBlank()) {
+                stringResource(KMR.strings.local_tracker_create_title, textFieldState.text.toString())
+            } else {
+                null
+            },
+            // KMK <--
+            onCreate = if (screenModel.canCreate) {
+                { screenModel.createTracking(textFieldState.text.toString()) { navigator.pop() } }
+            } else {
+                null
+            },
         )
     }
 
@@ -832,6 +850,10 @@ data class TrackerSearchScreen(
     ) : StateScreenModel<Model.State>(State()) {
 
         val supportsPrivateTracking = tracker.supportsPrivateTracking
+        // KMK -->
+        val creatableTracker = tracker as? CreatableTracker
+        val canCreate get() = creatableTracker != null
+        // KMK <--
 
         init {
             // Run search on first launch
@@ -865,6 +887,22 @@ data class TrackerSearchScreen(
         fun registerTracking(item: TrackSearch) {
             screenModelScope.launchNonCancellable { tracker.register(item, mangaId) }
         }
+
+        // KMK -->
+        fun createTracking(query: String, onCreated: () -> Unit) {
+            val creator = creatableTracker ?: return
+            if (query.isBlank()) return
+            screenModelScope.launch {
+                try {
+                    val item = withIOContext { creator.create(query) }
+                    tracker.register(item, mangaId)
+                    onCreated()
+                } catch (e: Exception) {
+                    withUIContext { Injekt.get<Application>().toast(e.message) }
+                }
+            }
+        }
+        // KMK <--
 
         fun updateSelection(selected: TrackSearch) {
             mutableState.update { it.copy(selected = selected) }

@@ -46,6 +46,7 @@ class TrackPreferences(
         Preference.appStateKey("track_pkce_code_verifier_${tracker.id}"),
         "",
     )
+    fun localTrackerUrl() = preferenceStore.getString(Preference.privateKey("local_tracker_url"), "")
     // KMK <--
 
     fun anilistScoreType() = preferenceStore.getString("anilist_score_type", Anilist.POINT_10)
