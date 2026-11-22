@@ -6,6 +6,7 @@ import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.data.database.models.Track
 import eu.kanade.tachiyomi.data.track.BaseTracker
 import eu.kanade.tachiyomi.data.track.CreatableTracker
+import eu.kanade.tachiyomi.data.track.DeletableTracker
 import eu.kanade.tachiyomi.data.track.model.TrackMangaMetadata
 import eu.kanade.tachiyomi.data.track.model.TrackSearch
 import kotlinx.collections.immutable.ImmutableList
@@ -25,7 +26,7 @@ import tachiyomi.i18n.MR
 import java.io.IOException
 import tachiyomi.domain.track.model.Track as DomainTrack
 
-class LocalManga(id: Long) : BaseTracker(id, "Local"), CreatableTracker {
+class LocalManga(id: Long) : BaseTracker(id, "Local"), CreatableTracker, DeletableTracker {
 
     companion object {
         const val READING = 1L
@@ -113,18 +114,37 @@ class LocalManga(id: Long) : BaseTracker(id, "Local"), CreatableTracker {
         }
     }
 
-    override suspend fun create(query: String): TrackSearch = withIOContext {
+    override suspend fun create(
+        title: String,
+        description: String,
+        coverImage: ByteArray?,
+        coverMimeType: String?,
+    ): TrackSearch = withIOContext {
         val payload = JSONObject().apply {
-            put("title", query.trim())
-            put("description", "")
+            put("title", title.trim())
+            put("description", description.trim())
             put("status", "plan_to_read")
             put("chapter", 0)
             put("score", JSONObject.NULL)
         }
-        request(serverUrl, "/api/manga", "POST", payload).use { response ->
+        val item = request(serverUrl, "/api/manga", "POST", payload).use { response ->
             response.requireSuccess()
             JSONObject(response.body.string()).toTrackSearch()
         }
+        if (coverImage != null) {
+            val body = coverImage.toRequestBody((coverMimeType ?: "image/jpeg").toMediaType())
+            localClient.newCall(
+                Request.Builder()
+                    .url("${normalizeServerUrl(serverUrl)}/api/manga/${item.remote_id}/cover")
+                    .post(body)
+                    .build(),
+            ).execute().use { it.requireSuccess() }
+        }
+        item
+    }
+
+    override suspend fun delete(track: DomainTrack) = withIOContext {
+        request(serverUrl, "/api/manga/${track.remoteId}", "DELETE").use { it.requireSuccess() }
     }
 
     override suspend fun bind(track: Track, hasReadChapters: Boolean): Track = withIOContext {
