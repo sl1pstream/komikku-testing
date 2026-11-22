@@ -5,6 +5,7 @@ import eu.kanade.tachiyomi.data.track.anilist.Anilist
 import eu.kanade.tachiyomi.data.track.bangumi.Bangumi
 import eu.kanade.tachiyomi.data.track.kitsu.Kitsu
 import eu.kanade.tachiyomi.data.track.komga.Komga
+import eu.kanade.tachiyomi.data.track.local.LocalManga // KMK --> // KMK <--
 import eu.kanade.tachiyomi.data.track.mangaupdates.MangaUpdates
 import eu.kanade.tachiyomi.data.track.myanimelist.MyAnimeList
 import eu.kanade.tachiyomi.data.track.shikimori.Shikimori
@@ -97,6 +98,16 @@ enum class TrackStatus(val int: Int, val res: StringResource) {
                         else -> null
                     }
                 }
+                // KMK -->
+                trackerManager.local.id -> when (status) {
+                    LocalManga.READING -> READING
+                    LocalManga.COMPLETED -> COMPLETED
+                    LocalManga.ON_HOLD -> PAUSED
+                    LocalManga.DROPPED -> DROPPED
+                    LocalManga.PLAN_TO_READ -> PLAN_TO_READ
+                    else -> null
+                }
+                // KMK <--
                 trackerManager.mangaUpdates.id -> {
                     when (status) {
                         MangaUpdates.READING_LIST -> READING
