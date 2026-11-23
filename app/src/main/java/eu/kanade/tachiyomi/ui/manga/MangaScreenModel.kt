@@ -314,12 +314,23 @@ class MangaScreenModel(
                 getTracks.await(mangaId).any { it.trackerId == trackerManager.local.id }
             }.getOrDefault(false)
             if (isTrackedLocally) {
+                // Auto-sync refreshes this tracker when the title opens and already reports detailed failures.
+                if (trackPreferences.autoSyncProgressFromTrackers().get()) return@launchIO
+
                 try {
                     trackerManager.local.testConnection()
                 } catch (e: CancellationException) {
                     throw e
-                } catch (_: Exception) {
-                    withUIContext { context.toast(KMR.strings.local_tracker_connection_failed) }
+                } catch (e: Exception) {
+                    withUIContext {
+                        context.toast(
+                            context.stringResource(
+                                MR.strings.track_error,
+                                trackerManager.local.name,
+                                e.message.orEmpty(),
+                            ),
+                        )
+                    }
                 }
             }
         }
