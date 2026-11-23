@@ -8,6 +8,7 @@ import eu.kanade.domain.track.service.TrackPreferences
 import eu.kanade.tachiyomi.data.track.mdlist.MdList
 import eu.kanade.tachiyomi.data.track.myanimelist.dto.MALOAuth
 import eu.kanade.tachiyomi.network.POST
+import eu.kanade.tachiyomi.network.interceptor.MangaDexUserAgentInterceptor
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.online.all.MangaDex
 import eu.kanade.tachiyomi.util.PkceUtil
@@ -184,14 +185,34 @@ class MdUtil {
             // the part where the token is added automatically.
             val headers = Headers.Builder()
                 .add("Authorization", "Bearer ${oauth.accessToken}")
+                // KMK -->
+                // Sent from inside the auth interceptor, past MangaDexUserAgentInterceptor, so set the same
+                // non-browser User-Agent here instead of falling back to OkHttp's default.
+                .add("User-Agent", MangaDexUserAgentInterceptor.defaultUserAgent())
+                // KMK <--
                 .build()
 
             return POST(MdApi.baseAuthUrl + MdApi.token, body = formBody, headers = headers)
         }
 
+        // KMK -->
+        // Only the refresh request still uses this in-memory verifier; logins use [newLoginCodeVerifier].
+        // KMK <--
         fun getPkceChallengeCode(): String {
             return codeVerifier ?: PkceUtil.generateCodeVerifier().also { codeVerifier = it }
         }
+
+        // KMK -->
+        /**
+         * Creates the PKCE code verifier of a new login, to build its authorization URL with, and stores it for
+         * the code exchange in [exh.md.network.MangaDexLoginHelper.login], replacing the one of any earlier
+         * login. Each login gets its own verifier.
+         */
+        fun newLoginCodeVerifier(preferences: TrackPreferences, mdList: MdList): String {
+            return PkceUtil.generateCodeVerifier()
+                .also { preferences.trackPkceCodeVerifier(mdList).set(it) }
+        }
+        // KMK <--
 
         fun getEnabledMangaDex(
             sourcePreferences: SourcePreferences = Injekt.get(),

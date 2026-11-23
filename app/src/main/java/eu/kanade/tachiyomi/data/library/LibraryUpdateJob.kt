@@ -62,6 +62,7 @@ import tachiyomi.core.common.util.system.logcat
 import tachiyomi.domain.category.model.Category
 import tachiyomi.domain.chapter.model.Chapter
 import tachiyomi.domain.chapter.model.NoChaptersException
+import tachiyomi.domain.chapter.repository.ChapterRepository
 import tachiyomi.domain.library.model.GroupLibraryMode
 import tachiyomi.domain.library.model.LibraryGroup
 import tachiyomi.domain.library.model.LibraryManga
@@ -134,6 +135,7 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
     private val deleteLibraryUpdateErrors: DeleteLibraryUpdateErrors = Injekt.get()
     private val insertLibraryUpdateErrors: InsertLibraryUpdateErrors = Injekt.get()
     private val insertLibraryUpdateErrorMessages: InsertLibraryUpdateErrorMessages = Injekt.get()
+    private val chapterRepository: ChapterRepository = Injekt.get()
     // KMK <--
 
     private var mangaToUpdate: List<LibraryManga> = mutableListOf()
@@ -573,27 +575,74 @@ class LibraryUpdateJob(private val context: Context, workerParams: WorkerParamet
 
                 var dbManga = getManga.await(networkManga.url, mangaDex.id)
 
+                // KMK -->
+                // The follows list already carries each entry's cover. UpdateMangaFromRemote doesn't fetch
+                // details here, so it only writes back the local manga: the cover has to be put on it first.
+                val remoteThumbnailUrl = networkManga.thumbnail_url?.takeIf { it.isNotEmpty() }
+
+                // Only new entries and entries whose cover URL changes get their cover refreshed (cached cover
+                // dropped + coverLastModified bumped). Otherwise every sync would re-download every cover.
+                var refreshCover = false
+                // KMK <--
+
                 if (dbManga == null) {
                     dbManga = networkToLocalManga(
                         Manga.create().copy(
                             url = networkManga.url,
                             ogTitle = networkManga.title,
+                            // KMK -->
+                            ogThumbnailUrl = remoteThumbnailUrl,
+                            // KMK <--
                             source = mangaDex.id,
                             favorite = true,
                             dateAdded = System.currentTimeMillis(),
                         ),
                     )
+                    // KMK -->
+                    refreshCover = true
+                    // KMK <--
                 } else if (!dbManga.favorite) {
                     updateManga.awaitUpdateFavorite(dbManga.id, true)
                 }
 
+                // KMK -->
+                // Only fill a missing cover. An existing one comes from the details parser, which applies the
+                // cover-quality and first-volume-cover preferences that the follows list doesn't.
+                if (remoteThumbnailUrl != null && dbManga.ogThumbnailUrl.isNullOrBlank()) {
+                    val shownThumbnailUrl = dbManga.thumbnailUrl
+                    dbManga = dbManga.copy(ogThumbnailUrl = remoteThumbnailUrl)
+                    // A custom thumbnail URL still wins over the filled one: its cached cover stays valid.
+                    if (dbManga.thumbnailUrl != shownThumbnailUrl) refreshCover = true
+                }
+                // KMK <--
+
                 updateMangaFromRemote(
                     manga = dbManga,
                     // KMK -->
-                    // Update cover & fetchInterval
-                    manualFetch = true,
-                    // KMK <--
+                    // manualFetch makes UpdateMangaFromRemote refresh the cover even when its URL is unchanged,
+                    // and makes SyncChaptersWithSource recalculate the fetch interval (only if it has chapters).
+                    manualFetch = refreshCover,
                 )
+                    .onSuccess {
+                        // Without manualFetch, still recalculate the fetch interval as manualFetch would.
+                        if (!refreshCover) {
+                            // Like UpdateMangaFromRemote, don't let one entry's failure stop the rest of the sync.
+                            try {
+                                // Not for an entry with no chapters (new follows, follows never updated): the
+                                // interval would be a guess, and its nextUpdate could make the "outside release
+                                // period" restriction skip it in the next library update, which fetches its
+                                // chapters. Checked right before recalculating, with a query that throws on failure
+                                // instead of returning an empty list.
+                                if (chapterRepository.getChapterByMangaId(dbManga.id).isNotEmpty()) {
+                                    updateManga.awaitUpdateFetchInterval(dbManga)
+                                }
+                            } catch (e: Exception) {
+                                if (e is CancellationException) throw e
+                                logcat(LogPriority.ERROR, e)
+                            }
+                        }
+                    }
+                // KMK <--
 
                 metadata.mangaId = dbManga.id
                 insertFlatMetadata.await(metadata)

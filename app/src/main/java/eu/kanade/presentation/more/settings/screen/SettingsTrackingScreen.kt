@@ -192,7 +192,14 @@ object SettingsTrackingScreen : SearchableSettings {
                     // KMK <--
                     Preference.PreferenceItem.TrackerPreference(
                         tracker = trackerManager.myAnimeList,
-                        login = { context.openInBrowser(MyAnimeListApi.authUrl(), forceDefaultBrowser = true) },
+                        login = {
+                            context.openInBrowser(
+                                // KMK -->
+                                MyAnimeListApi.authUrl(trackPreferences, trackerManager.myAnimeList),
+                                // KMK <--
+                                forceDefaultBrowser = true,
+                            )
+                        },
                         logout = { dialog = LogoutDialog(trackerManager.myAnimeList) },
                     ),
                     Preference.PreferenceItem.TrackerPreference(
