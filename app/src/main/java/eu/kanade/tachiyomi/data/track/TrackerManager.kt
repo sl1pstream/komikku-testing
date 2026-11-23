@@ -81,15 +81,16 @@ class TrackerManager {
 
     // KMK -->
     fun orderedTrackers(): List<Tracker> {
+        val allTrackers = trackers + local
         val savedIds = trackPreferences.trackerOrder().get()
             .split(',')
             .mapNotNull { it.trim().toLongOrNull() }
-        if (savedIds.isEmpty()) return trackers
+        if (savedIds.isEmpty()) return allTrackers
 
-        val trackersById = trackers.associateBy { it.id }
+        val trackersById = allTrackers.associateBy { it.id }
         val ordered = savedIds.mapNotNull { trackersById[it] }.distinctBy { it.id }
         val orderedIds = ordered.mapTo(mutableSetOf()) { it.id }
-        return ordered + trackers.filterNot { it.id in orderedIds }
+        return ordered + allTrackers.filterNot { it.id in orderedIds }
     }
 
     /**

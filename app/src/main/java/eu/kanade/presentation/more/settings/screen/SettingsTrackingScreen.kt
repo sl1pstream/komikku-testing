@@ -183,13 +183,6 @@ object SettingsTrackingScreen : SearchableSettings {
             Preference.PreferenceGroup(
                 title = stringResource(MR.strings.services),
                 preferenceItems = persistentListOf(
-                    // KMK -->
-                    Preference.PreferenceItem.TrackerPreference(
-                        tracker = trackerManager.local,
-                        login = { dialog = LocalServerDialog(trackerManager.local) },
-                        logout = { dialog = LocalServerDialog(trackerManager.local) },
-                    ),
-                    // KMK <--
                     Preference.PreferenceItem.TrackerPreference(
                         tracker = trackerManager.myAnimeList,
                         login = {
@@ -237,6 +230,13 @@ object SettingsTrackingScreen : SearchableSettings {
                         tracker = trackerManager.mangaBaka,
                         login = { context.openInBrowser(MangaBakaApi.authUrl(), forceDefaultBrowser = true) },
                         logout = { dialog = LogoutDialog(trackerManager.mangaBaka) },
+                    ),
+                    // KMK <--
+                    // KMK -->
+                    Preference.PreferenceItem.TrackerPreference(
+                        tracker = trackerManager.local,
+                        login = { dialog = LocalServerDialog(trackerManager.local) },
+                        logout = { dialog = LocalServerDialog(trackerManager.local) },
                     ),
                     // KMK <--
                     Preference.PreferenceItem.InfoPreference(stringResource(MR.strings.tracking_info)),
