@@ -1,6 +1,7 @@
 package eu.kanade.tachiyomi.data.track.local
 
 // KMK -->
+import android.app.Application
 import dev.icerock.moko.resources.StringResource
 import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.data.database.models.Track
@@ -21,9 +22,14 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
+import tachiyomi.core.common.i18n.stringResource
 import tachiyomi.core.common.util.lang.withIOContext
 import tachiyomi.i18n.MR
+import tachiyomi.i18n.kmk.KMR
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
 import java.io.IOException
+import java.util.concurrent.TimeUnit
 import tachiyomi.domain.track.model.Track as DomainTrack
 
 class LocalManga(id: Long) : BaseTracker(id, "Local"), CreatableTracker, DeletableTracker {
@@ -39,7 +45,14 @@ class LocalManga(id: Long) : BaseTracker(id, "Local"), CreatableTracker, Deletab
     }
 
     private val serverUrl get() = trackPreferences.localTrackerUrl().get().trimEnd('/')
-    private val localClient by lazy { client.newBuilder().dns(Dns.SYSTEM).build() }
+    private val localClient by lazy {
+        client.newBuilder()
+            .dns(Dns.SYSTEM)
+            .connectTimeout(5, TimeUnit.SECONDS)
+            .readTimeout(5, TimeUnit.SECONDS)
+            .callTimeout(12, TimeUnit.SECONDS)
+            .build()
+    }
 
     override val supportsReadingDates = false
     override fun getLogo(): Int = R.drawable.brand_local
@@ -108,9 +121,16 @@ class LocalManga(id: Long) : BaseTracker(id, "Local"), CreatableTracker, Deletab
 
     override suspend fun search(query: String): List<TrackSearch> = withIOContext {
         val searchUrl = "$serverUrl/api/search".toHttpUrl().newBuilder().addQueryParameter("q", query).build()
-        localClient.newCall(Request.Builder().url(searchUrl).build()).execute().use { response ->
-            response.requireSuccess()
-            JSONArray(response.body.string()).toTrackSearches()
+        try {
+            localClient.newCall(Request.Builder().url(searchUrl).build()).execute().use { response ->
+                response.requireSuccess()
+                JSONArray(response.body.string()).toTrackSearches()
+            }
+        } catch (e: IOException) {
+            throw IOException(
+                Injekt.get<Application>().stringResource(KMR.strings.local_tracker_search_connection_error),
+                e,
+            )
         }
     }
 
