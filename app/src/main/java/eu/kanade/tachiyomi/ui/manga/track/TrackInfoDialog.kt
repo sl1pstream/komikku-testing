@@ -865,7 +865,14 @@ data class TrackerSearchScreen(
                 null
             },
             onCreate = if (screenModel.canCreate) {
-                { navigator.push(TrackerCreateScreen(mangaId, serviceId, textFieldState.text.toString())) }
+                {
+                    val query = textFieldState.text.toString()
+                    navigator.push(
+                        TrackerCreateScreen(mangaId, serviceId, query) { createdItem ->
+                            screenModel.trackingSearch(query, createdItem)
+                        },
+                    )
+                }
             } else {
                 null
             },
@@ -893,14 +900,22 @@ data class TrackerSearchScreen(
             }
         }
 
-        fun trackingSearch(query: String) {
+        // KMK -->
+        fun trackingSearch(query: String, createdItem: TrackSearch? = null) {
+            // KMK <--
             screenModelScope.launch {
                 // To show loading state
                 mutableState.update { it.copy(queryResult = null, selected = null) }
 
                 val result = withIOContext {
                     try {
-                        val results = tracker.search(query.sanitize())
+                        // KMK -->
+                        val results = tracker.search(query.sanitize()).toMutableList().apply {
+                            createdItem?.let { created ->
+                                if (none { it.remote_id == created.remote_id }) add(created)
+                            }
+                        }
+                        // KMK <--
                         Result.success(results)
                     } catch (e: Throwable) {
                         Result.failure(e)
@@ -936,6 +951,9 @@ private data class TrackerCreateScreen(
     private val mangaId: Long,
     private val serviceId: Long,
     private val initialTitle: String,
+    // KMK -->
+    private val onCreated: (TrackSearch) -> Unit,
+    // KMK <--
 ) : Screen() {
 
     @Composable
@@ -1055,9 +1073,14 @@ private data class TrackerCreateScreen(
                             coverUri,
                             useMangaCover,
                             context,
-                        ) { success ->
+                        ) { createdItem ->
                             isCreating = false
-                            if (success) navigator.pop()
+                            // KMK -->
+                            if (createdItem != null) {
+                                navigator.pop()
+                                onCreated(createdItem)
+                            }
+                            // KMK <--
                         }
                     },
                     enabled = title.isNotBlank() && !isCreating && !state.isLoadingManga,
@@ -1093,7 +1116,9 @@ private data class TrackerCreateScreen(
             coverUri: Uri?,
             useMangaCover: Boolean,
             context: Context,
-            onFinished: (Boolean) -> Unit,
+            // KMK -->
+            onFinished: (TrackSearch?) -> Unit,
+            // KMK <--
         ) {
             val creator = tracker as? CreatableTracker ?: return
             screenModelScope.launch {
@@ -1116,12 +1141,15 @@ private data class TrackerCreateScreen(
                         else -> null
                     }
                     val item = withIOContext { creator.create(title, description, coverImage, coverMimeType) }
-                    tracker.register(item, mangaId)
-                    withUIContext { onFinished(true) }
+                    // KMK -->
+                    withUIContext { onFinished(item) }
+                    // KMK <--
                 } catch (e: Exception) {
                     withUIContext {
                         Injekt.get<Application>().toast(e.message)
-                        onFinished(false)
+                        // KMK -->
+                        onFinished(null)
+                        // KMK <--
                     }
                 }
             }
