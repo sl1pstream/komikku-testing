@@ -56,6 +56,7 @@ import eu.kanade.tachiyomi.data.coil.TachiyomiImageDecoder
 import eu.kanade.tachiyomi.data.connections.discord.DiscordRPCService
 import eu.kanade.tachiyomi.data.notification.Notifications
 import eu.kanade.tachiyomi.data.sync.SyncDataJob
+import eu.kanade.tachiyomi.data.track.TrackerManager // KMK --> // KMK <--
 import eu.kanade.tachiyomi.di.AppModule
 import eu.kanade.tachiyomi.di.PreferenceModule
 import eu.kanade.tachiyomi.di.SYPreferenceModule
@@ -71,6 +72,7 @@ import eu.kanade.tachiyomi.util.system.isDebugBuildType
 import eu.kanade.tachiyomi.util.system.isPreviewBuildType
 import eu.kanade.tachiyomi.util.system.notify
 import eu.kanade.tachiyomi.util.system.telemetryIncluded
+import eu.kanade.tachiyomi.util.system.toast // KMK --> // KMK <--
 import exh.log.CrashlyticsPrinter
 import exh.log.EHLogLevel
 import exh.log.EnhancedFilePrinter
@@ -79,6 +81,8 @@ import exh.log.xLogD
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch // KMK --> // KMK <--
+import kotlinx.coroutines.withContext // KMK --> // KMK <--
 import logcat.AndroidLogcatLogger
 import logcat.LogPriority
 import logcat.LogcatLogger
@@ -93,6 +97,7 @@ import tachiyomi.core.common.util.system.ImageUtil
 import tachiyomi.core.common.util.system.logcat
 import tachiyomi.domain.storage.service.StorageManager
 import tachiyomi.i18n.MR
+import tachiyomi.i18n.kmk.KMR // KMK --> // KMK <--
 import tachiyomi.presentation.widget.WidgetManager
 import timber.log.Timber
 import uy.kohesive.injekt.Injekt
@@ -166,6 +171,20 @@ class App : Application(), DefaultLifecycleObserver, SingletonImageLoader.Factor
         ProcessLifecycleOwner.get().lifecycle.addObserver(this)
 
         val scope = ProcessLifecycleOwner.get().lifecycleScope
+
+        // KMK -->
+        scope.launch {
+            val localTracker = Injekt.get<TrackerManager>().local
+            if (localTracker.isLoggedIn) {
+                val isReachable = runCatching { localTracker.testConnection() }.isSuccess
+                if (!isReachable) {
+                    withContext(Dispatchers.Main) {
+                        toast(KMR.strings.local_tracker_connection_failed)
+                    }
+                }
+            }
+        }
+        // KMK <--
 
         // Show notification to disable Incognito Mode when it's enabled
         basePreferences.incognitoMode().changes()
