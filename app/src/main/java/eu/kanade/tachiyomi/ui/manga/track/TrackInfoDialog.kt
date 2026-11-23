@@ -2,20 +2,25 @@ package eu.kanade.tachiyomi.ui.manga.track
 
 import android.app.Application
 import android.content.Context
+import android.graphics.Bitmap // KMK --> // KMK <--
 import android.net.Uri // KMK --> // KMK <--
 import androidx.activity.compose.rememberLauncherForActivityResult // KMK --> // KMK <--
 import androidx.activity.result.contract.ActivityResultContracts // KMK --> // KMK <--
 import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.background // KMK --> // KMK <--
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box // KMK --> // KMK <--
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize // KMK --> // KMK <--
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height // KMK --> // KMK <--
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState // KMK --> // KMK <--
+import androidx.compose.foundation.shape.RoundedCornerShape // KMK --> // KMK <--
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.verticalScroll // KMK --> // KMK <--
 import androidx.compose.material.icons.Icons
@@ -35,6 +40,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar // KMK --> // KMK <--
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.LaunchedEffect // KMK --> // KMK <--
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -42,6 +48,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip // KMK --> // KMK <--
+import androidx.compose.ui.layout.ContentScale // KMK --> // KMK <--
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -53,6 +61,12 @@ import cafe.adriel.voyager.core.model.screenModelScope
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.Navigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import coil3.asDrawable // KMK --> // KMK <--
+import coil3.compose.AsyncImage // KMK --> // KMK <--
+import coil3.imageLoader // KMK --> // KMK <--
+import coil3.request.ImageRequest // KMK --> // KMK <--
+import coil3.request.allowHardware // KMK --> // KMK <--
+import coil3.size.Size // KMK --> // KMK <--
 import dev.icerock.moko.resources.StringResource
 import eu.kanade.domain.track.interactor.RefreshTracks
 import eu.kanade.domain.track.model.toDbTrack
@@ -76,12 +90,14 @@ import eu.kanade.tachiyomi.source.online.all.MergedSource
 import eu.kanade.tachiyomi.util.lang.convertEpochMillisZone
 import eu.kanade.tachiyomi.util.lang.toLocalDate
 import eu.kanade.tachiyomi.util.system.copyToClipboard
+import eu.kanade.tachiyomi.util.system.getBitmapOrNull // KMK --> // KMK <--
 import eu.kanade.tachiyomi.util.system.openInBrowser
 import eu.kanade.tachiyomi.util.system.toast
 import exh.metadata.metadata.base.TrackerIdMetadata
 import exh.source.MERGED_SOURCE_ID
 import exh.source.getMainSource
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.coroutines.CancellationException // KMK --> // KMK <--
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -113,6 +129,7 @@ import tachiyomi.presentation.core.i18n.stringResource
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import uy.kohesive.injekt.injectLazy
+import java.io.ByteArrayOutputStream // KMK --> // KMK <--
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -927,13 +944,23 @@ private data class TrackerCreateScreen(
         val context = LocalContext.current
         val tracker = remember { Injekt.get<TrackerManager>().get(serviceId)!! }
         val screenModel = rememberScreenModel { Model(mangaId, tracker) }
+        val state by screenModel.state.collectAsState()
         var title by remember { mutableStateOf(initialTitle) }
         var description by remember { mutableStateOf("") }
+        var descriptionEdited by remember { mutableStateOf(false) }
         var coverUri by remember { mutableStateOf<Uri?>(null) }
+        var useMangaCover by remember { mutableStateOf(true) }
         var isCreating by remember { mutableStateOf(false) }
         val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) {
-            coverUri = it
+            if (it != null) {
+                coverUri = it
+                useMangaCover = false
+            }
         }
+        LaunchedEffect(state.manga) {
+            if (!descriptionEdited) description = state.manga?.description.orEmpty()
+        }
+        val previewCover = coverUri ?: if (useMangaCover) state.manga else null
 
         Scaffold(
             modifier = Modifier.windowInsetsPadding(WindowInsets.systemBars),
@@ -965,32 +992,75 @@ private data class TrackerCreateScreen(
                 )
                 OutlinedTextField(
                     value = description,
-                    onValueChange = { description = it },
+                    onValueChange = {
+                        description = it
+                        descriptionEdited = true
+                    },
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text(stringResource(KMR.strings.local_tracker_create_description_label)) },
                     minLines = 4,
                 )
                 Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small)) {
                     Text(text = stringResource(KMR.strings.local_tracker_create_cover_label))
-                    TextButton(onClick = { imagePicker.launch("image/*") }) {
-                        Text(
-                            text = if (coverUri == null) {
-                                stringResource(KMR.strings.local_tracker_create_select_cover)
-                            } else {
-                                coverUri?.lastPathSegment ?: stringResource(KMR.strings.local_tracker_create_cover_label)
-                            },
+                    if (previewCover != null) {
+                        AsyncImage(
+                            model = previewCover,
+                            contentDescription = stringResource(KMR.strings.local_tracker_create_cover_label),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(220.dp)
+                                .clip(RoundedCornerShape(12.dp)),
+                            contentScale = ContentScale.Fit,
                         )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(120.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(text = stringResource(KMR.strings.local_tracker_create_select_cover))
+                        }
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small),
+                    ) {
+                        TextButton(
+                            onClick = { imagePicker.launch("image/*") },
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            Text(text = stringResource(KMR.strings.local_tracker_create_change_cover))
+                        }
+                        TextButton(
+                            onClick = {
+                                coverUri = null
+                                useMangaCover = false
+                            },
+                            enabled = previewCover != null,
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            Text(text = stringResource(MR.strings.action_remove))
+                        }
                     }
                 }
                 Button(
                     onClick = {
                         isCreating = true
-                        screenModel.create(title, description, coverUri, context.contentResolver) { success ->
+                        screenModel.create(
+                            title,
+                            description,
+                            coverUri,
+                            useMangaCover,
+                            context,
+                        ) { success ->
                             isCreating = false
                             if (success) navigator.pop()
                         }
                     },
-                    enabled = title.isNotBlank() && !isCreating,
+                    enabled = title.isNotBlank() && !isCreating && !state.isLoadingManga,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     if (isCreating) {
@@ -1006,25 +1076,45 @@ private data class TrackerCreateScreen(
     private class Model(
         private val mangaId: Long,
         private val tracker: Tracker,
-    ) : ScreenModel {
+        private val getManga: GetManga = Injekt.get(),
+        private val application: Application = Injekt.get(),
+    ) : StateScreenModel<Model.State>(State()) {
+
+        init {
+            screenModelScope.launch {
+                val manga = withIOContext { getManga.await(mangaId) }
+                mutableState.update { it.copy(manga = manga, isLoadingManga = false) }
+            }
+        }
 
         fun create(
             title: String,
             description: String,
             coverUri: Uri?,
-            contentResolver: android.content.ContentResolver,
+            useMangaCover: Boolean,
+            context: Context,
             onFinished: (Boolean) -> Unit,
         ) {
             val creator = tracker as? CreatableTracker ?: return
             screenModelScope.launch {
                 try {
-                    val coverImage = coverUri?.let { uri ->
+                    val selectedCover = coverUri?.let { uri ->
                         withIOContext {
-                            contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                            context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
                                 ?: throw IllegalStateException("Could not read selected cover image")
                         }
                     }
-                    val coverMimeType = coverUri?.let(contentResolver::getType)
+                    val mangaCover = if (coverUri == null && useMangaCover) {
+                        mutableState.value.manga?.let { loadMangaCover(it) }
+                    } else {
+                        null
+                    }
+                    val coverImage = selectedCover ?: mangaCover
+                    val coverMimeType = when {
+                        coverUri != null -> context.contentResolver.getType(coverUri)
+                        mangaCover != null -> "image/jpeg"
+                        else -> null
+                    }
                     val item = withIOContext { creator.create(title, description, coverImage, coverMimeType) }
                     tracker.register(item, mangaId)
                     withUIContext { onFinished(true) }
@@ -1036,6 +1126,33 @@ private data class TrackerCreateScreen(
                 }
             }
         }
+
+        private suspend fun loadMangaCover(manga: Manga): ByteArray? = try {
+            withIOContext {
+                val request = ImageRequest.Builder(application)
+                    .data(manga)
+                    .size(Size.ORIGINAL)
+                    .allowHardware(false)
+                    .build()
+                val bitmap = application.imageLoader.execute(request).image
+                    ?.asDrawable(application.resources)
+                    ?.getBitmapOrNull()
+                    ?: return@withIOContext null
+                ByteArrayOutputStream().use { output ->
+                    if (bitmap.compress(Bitmap.CompressFormat.JPEG, 92, output)) output.toByteArray() else null
+                }
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            null
+        }
+
+        @Immutable
+        data class State(
+            val manga: Manga? = null,
+            val isLoadingManga: Boolean = true,
+        )
     }
 }
 // KMK <--

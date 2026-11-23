@@ -23,6 +23,7 @@
     <string name="local_tracker_create_description_label">Description</string>
     <string name="local_tracker_create_cover_label">Cover image</string>
     <string name="local_tracker_create_select_cover">Select cover image</string>
+    <string name="local_tracker_create_change_cover">Change cover</string>
     <string name="local_tracker_create_action">Create</string>
     <!-- KMK <- -->
     <string name="action_source_search">Search in source</string>
