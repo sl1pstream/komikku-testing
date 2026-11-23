@@ -10,6 +10,9 @@
     <string name="local_tracker_testing">Testing…</string>
     <string name="local_tracker_connection_success">Connection successful</string>
     <string name="local_tracker_connection_failed">Could not connect</string>
+    <!-- KMK -> -->
+    <string name="local_tracker_search_connection_error">Could not reach the Local tracker server. Check that it is running and the address is correct.</string>
+    <!-- KMK <- -->
     <string name="local_tracker_invalid_address">Enter a valid server address</string>
     <string name="local_tracker_disconnect">Disconnect</string>
     <string name="local_tracker_create_title_label">Title</string>
