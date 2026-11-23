@@ -96,7 +96,6 @@ import tachiyomi.core.common.util.system.ImageUtil
 import tachiyomi.core.common.util.system.logcat
 import tachiyomi.domain.storage.service.StorageManager
 import tachiyomi.i18n.MR
-import tachiyomi.i18n.kmk.KMR // KMK --> // KMK <--
 import tachiyomi.presentation.widget.WidgetManager
 import timber.log.Timber
 import uy.kohesive.injekt.Injekt
@@ -175,10 +174,16 @@ class App : Application(), DefaultLifecycleObserver, SingletonImageLoader.Factor
         scope.launch {
             val localTracker = Injekt.get<TrackerManager>().local
             if (localTracker.isLoggedIn) {
-                val isReachable = runCatching { localTracker.testConnection() }.isSuccess
-                if (!isReachable) {
+                val connectionError = runCatching { localTracker.testConnection() }.exceptionOrNull()
+                if (connectionError != null) {
                     withContext(Dispatchers.Main) {
-                        toast(KMR.strings.local_tracker_connection_failed)
+                        toast(
+                            stringResource(
+                                MR.strings.track_error,
+                                localTracker.name,
+                                connectionError.message.orEmpty(),
+                            ),
+                        )
                     }
                 }
             }
