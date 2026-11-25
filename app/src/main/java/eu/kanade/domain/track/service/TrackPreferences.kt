@@ -36,8 +36,6 @@ class TrackPreferences(
     fun trackToken(tracker: Tracker) = preferenceStore.getString(Preference.privateKey("track_token_${tracker.id}"), "")
 
     // KMK -->
-    fun localTrackerUrl() = preferenceStore.getString(Preference.privateKey("local_tracker_url"), "")
-
     /**
      * PKCE code verifier of the login in progress in the browser, until its code exchange. Stored rather than
      * kept in memory, so the login still completes when the app process is killed while the browser is open.
@@ -49,6 +47,7 @@ class TrackPreferences(
         Preference.appStateKey("track_pkce_code_verifier_${tracker.id}"),
         "",
     )
+    fun localTrackerUrl() = preferenceStore.getString(Preference.privateKey("local_tracker_url"), "")
     // KMK <--
 
     fun anilistScoreType() = preferenceStore.getString("anilist_score_type", Anilist.POINT_10)
@@ -81,10 +80,6 @@ class TrackPreferences(
         Preference.privateKey("comick_oauth_pending"),
         "",
     )
-    // KMK <--
-
-    // KMK -->
-    fun trackerOrder() = preferenceStore.getString("pref_tracker_order", "")
     // KMK <--
 
     // KMK -->
