@@ -86,4 +86,8 @@ class TrackPreferences(
     // KMK -->
     fun trackerOrder() = preferenceStore.getString("pref_tracker_order", "")
     // KMK <--
+
+    // KMK -->
+    fun trackerOrder() = preferenceStore.getString("pref_tracker_order", "")
+    // KMK <--
 }
