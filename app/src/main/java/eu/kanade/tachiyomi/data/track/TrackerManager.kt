@@ -26,6 +26,9 @@ class TrackerManager {
         const val ANILIST = 2L
         const val KITSU = 3L
         const val KAVITA = 8L
+        // KMK -->
+        const val MANGABAKA = 11L
+        // KMK <--
 
         // SY --> Mangadex from Neko
         const val MDLIST = 60L
