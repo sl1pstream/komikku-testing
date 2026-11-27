@@ -6,7 +6,12 @@ import android.graphics.Bitmap // KMK --> // KMK <--
 import android.net.Uri // KMK --> // KMK <--
 import androidx.activity.compose.rememberLauncherForActivityResult // KMK --> // KMK <--
 import androidx.activity.result.contract.ActivityResultContracts // KMK --> // KMK <--
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background // KMK --> // KMK <--
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box // KMK --> // KMK <--
@@ -985,26 +990,34 @@ private object TrackerCreateResultStore {
     }
 }
 
-/** Reset icon sitting in a cutout at the top-right corner of a text field. */
+/** Animated reset icon sitting in a cutout near the top-right corner of a text field. */
 @Composable
 private fun ResetFieldButton(
+    visible: Boolean,
     contentDescription: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    IconButton(
-        onClick = onClick,
-        modifier = modifier
-            .offset(x = 8.dp, y = (-8).dp)
-            .background(MaterialTheme.colorScheme.background, RoundedCornerShape(50))
-            .size(24.dp),
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn() + scaleIn(initialScale = 0.8f),
+        exit = fadeOut() + scaleOut(targetScale = 0.8f),
+        modifier = modifier,
     ) {
-        Icon(
-            imageVector = Icons.Outlined.RestartAlt,
-            contentDescription = contentDescription,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(16.dp),
-        )
+        IconButton(
+            onClick = onClick,
+            modifier = Modifier
+                .offset(x = 4.dp, y = (-4).dp)
+                .background(MaterialTheme.colorScheme.background, RoundedCornerShape(50))
+                .size(32.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.RestartAlt,
+                contentDescription = contentDescription,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp),
+            )
+        }
     }
 }
 
@@ -1069,13 +1082,12 @@ private data class TrackerCreateScreen(
                         label = { Text(stringResource(KMR.strings.local_tracker_create_title_label)) },
                         singleLine = true,
                     )
-                    if (title != initialTitle) {
-                        ResetFieldButton(
-                            contentDescription = stringResource(KMR.strings.local_tracker_create_reset_title),
-                            onClick = { title = initialTitle },
-                            modifier = Modifier.align(Alignment.TopEnd),
-                        )
-                    }
+                    ResetFieldButton(
+                        visible = title != initialTitle,
+                        contentDescription = stringResource(KMR.strings.local_tracker_create_reset_title),
+                        onClick = { title = initialTitle },
+                        modifier = Modifier.align(Alignment.TopEnd),
+                    )
                 }
                 Box {
                     OutlinedTextField(
@@ -1088,18 +1100,17 @@ private data class TrackerCreateScreen(
                         label = { Text(stringResource(KMR.strings.local_tracker_create_description_label)) },
                         minLines = 4,
                     )
-                    if (descriptionEdited || description != state.manga?.description.orEmpty()) {
-                        ResetFieldButton(
-                            contentDescription = stringResource(
-                                KMR.strings.local_tracker_create_reset_description,
-                            ),
-                            onClick = {
-                                description = state.manga?.description.orEmpty()
-                                descriptionEdited = false
-                            },
-                            modifier = Modifier.align(Alignment.TopEnd),
-                        )
-                    }
+                    ResetFieldButton(
+                        visible = descriptionEdited || description != state.manga?.description.orEmpty(),
+                        contentDescription = stringResource(
+                            KMR.strings.local_tracker_create_reset_description,
+                        ),
+                        onClick = {
+                            description = state.manga?.description.orEmpty()
+                            descriptionEdited = false
+                        },
+                        modifier = Modifier.align(Alignment.TopEnd),
+                    )
                 }
                 // KMK <--
                 Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small)) {
