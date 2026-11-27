@@ -8,6 +8,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult // KMK --> //
 import androidx.activity.result.contract.ActivityResultContracts // KMK --> // KMK <--
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background // KMK --> // KMK <--
@@ -55,6 +56,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip // KMK --> // KMK <--
+import androidx.compose.ui.graphics.TransformOrigin // KMK --> // KMK <--
 import androidx.compose.ui.layout.ContentScale // KMK --> // KMK <--
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
@@ -1009,8 +1011,16 @@ private fun ResetFieldButton(
 ) {
     AnimatedVisibility(
         visible = visible,
-        enter = scaleIn(initialScale = 0f),
-        exit = scaleOut(targetScale = 0f),
+        enter = scaleIn(
+            animationSpec = tween(durationMillis = 150),
+            initialScale = 0f,
+            transformOrigin = TransformOrigin.Center,
+        ),
+        exit = scaleOut(
+            animationSpec = tween(durationMillis = 150),
+            targetScale = 0f,
+            transformOrigin = TransformOrigin.Center,
+        ),
         modifier = modifier,
     ) {
         IconButton(
