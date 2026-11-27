@@ -42,6 +42,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import cafe.adriel.voyager.navigator.LocalNavigator // KMK --> // KMK <--
 import dev.icerock.moko.resources.StringResource
 import eu.kanade.domain.track.model.AutoTrackState
 import eu.kanade.domain.track.service.TrackPreferences
@@ -54,6 +55,7 @@ import eu.kanade.tachiyomi.data.track.bangumi.BangumiApi
 import eu.kanade.tachiyomi.data.track.mangabaka.MangaBakaApi // KMK --> // KMK <--
 import eu.kanade.tachiyomi.data.track.myanimelist.MyAnimeListApi
 import eu.kanade.tachiyomi.data.track.shikimori.ShikimoriApi
+import eu.kanade.tachiyomi.ui.setting.track.TrackerOrderScreen // KMK --> // KMK <--
 import eu.kanade.tachiyomi.util.system.openInBrowser
 import eu.kanade.tachiyomi.util.system.toast
 import kotlinx.collections.immutable.persistentListOf
@@ -95,6 +97,9 @@ object SettingsTrackingScreen : SearchableSettings {
         val trackPreferences = remember { Injekt.get<TrackPreferences>() }
         val trackerManager = remember { Injekt.get<TrackerManager>() }
         val sourceManager = remember { Injekt.get<SourceManager>() }
+        // KMK -->
+        val navigator = LocalNavigator.current
+        // KMK <--
 
         var dialog by remember { mutableStateOf<Any?>(null) }
         dialog?.run {
@@ -159,6 +164,13 @@ object SettingsTrackingScreen : SearchableSettings {
                 subtitle = stringResource(SYMR.strings.pref_tracker_resolve_using_source_metadata_summary),
             ),
             // SY <--
+            // KMK -->
+            Preference.PreferenceItem.TextPreference(
+                title = stringResource(KMR.strings.pref_tracker_order),
+                subtitle = stringResource(KMR.strings.pref_tracker_order_summary),
+                onClick = { navigator?.push(TrackerOrderScreen()) },
+            ),
+            // KMK <--
             Preference.PreferenceGroup(
                 title = stringResource(MR.strings.services),
                 preferenceItems = persistentListOf(
