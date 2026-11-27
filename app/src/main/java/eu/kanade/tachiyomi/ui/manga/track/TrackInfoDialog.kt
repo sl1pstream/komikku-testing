@@ -26,6 +26,7 @@ import androidx.compose.foundation.verticalScroll // KMK --> // KMK <--
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack // KMK --> // KMK <--
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.outlined.RestartAlt // KMK --> // KMK <--
 import androidx.compose.material3.Button // KMK --> // KMK <--
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -1040,6 +1041,18 @@ private data class TrackerCreateScreen(
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text(stringResource(KMR.strings.local_tracker_create_title_label)) },
                     singleLine = true,
+                    // KMK -->
+                    trailingIcon = {
+                        if (title != initialTitle) {
+                            IconButton(onClick = { title = initialTitle }) {
+                                Icon(
+                                    imageVector = Icons.Outlined.RestartAlt,
+                                    contentDescription = stringResource(KMR.strings.local_tracker_create_reset_title),
+                                )
+                            }
+                        }
+                    },
+                    // KMK <--
                 )
                 OutlinedTextField(
                     value = description,
@@ -1050,6 +1063,25 @@ private data class TrackerCreateScreen(
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text(stringResource(KMR.strings.local_tracker_create_description_label)) },
                     minLines = 4,
+                    // KMK -->
+                    trailingIcon = {
+                        if (descriptionEdited || description != state.manga?.description.orEmpty()) {
+                            IconButton(
+                                onClick = {
+                                    description = state.manga?.description.orEmpty()
+                                    descriptionEdited = false
+                                },
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.RestartAlt,
+                                    contentDescription = stringResource(
+                                        KMR.strings.local_tracker_create_reset_description,
+                                    ),
+                                )
+                            }
+                        }
+                    },
+                    // KMK <--
                 )
                 Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small)) {
                     Text(text = stringResource(KMR.strings.local_tracker_create_cover_label))
@@ -1096,6 +1128,25 @@ private data class TrackerCreateScreen(
                             Text(text = stringResource(MR.strings.action_remove))
                         }
                     }
+                    // KMK -->
+                    TextButton(
+                        onClick = {
+                            coverUri = null
+                            useMangaCover = true
+                        },
+                        enabled = coverUri != null || !useMangaCover,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.RestartAlt,
+                            contentDescription = null,
+                        )
+                        Text(
+                            text = stringResource(KMR.strings.local_tracker_create_reset_cover),
+                            modifier = Modifier.padding(start = MaterialTheme.padding.small),
+                        )
+                    }
+                    // KMK <--
                 }
                 Button(
                     onClick = {
