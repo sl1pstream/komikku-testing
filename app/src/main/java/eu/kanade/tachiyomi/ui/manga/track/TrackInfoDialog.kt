@@ -98,6 +98,8 @@ import exh.source.MERGED_SOURCE_ID
 import exh.source.getMainSource
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.CancellationException // KMK --> // KMK <--
+import kotlinx.coroutines.flow.MutableStateFlow // KMK --> // KMK <--
+import kotlinx.coroutines.flow.StateFlow // KMK --> // KMK <--
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -841,6 +843,18 @@ data class TrackerSearchScreen(
 
         val state by screenModel.state.collectAsState()
 
+        // KMK -->
+        val resultKey = "local-create:$serviceId:$mangaId"
+        val createResult by TrackerCreateResultStore.result.collectAsState()
+        LaunchedEffect(createResult) {
+            val result = createResult
+            if (result != null && result.key == resultKey) {
+                screenModel.trackingSearch(result.query, result.item)
+                TrackerCreateResultStore.consume(resultKey)
+            }
+        }
+        // KMK <--
+
         val textFieldState = rememberTextFieldState(initialQuery)
         TrackerSearch(
             state = textFieldState,
@@ -865,11 +879,7 @@ data class TrackerSearchScreen(
             onCreate = if (screenModel.canCreate) {
                 {
                     val query = textFieldState.text.toString()
-                    navigator.push(
-                        TrackerCreateScreen(mangaId, serviceId, query) { createdItem ->
-                            screenModel.trackingSearch(query, createdItem)
-                        },
-                    )
+                    navigator.push(TrackerCreateScreen(mangaId, serviceId, query, resultKey))
                 }
             } else {
                 null
@@ -945,13 +955,38 @@ data class TrackerSearchScreen(
 }
 
 // KMK -->
+/**
+ * Result handed back from [TrackerCreateScreen] to [TrackerSearchScreen].
+ *
+ * Kept out of the Screen itself: Voyager screens are Serializable and saved with the
+ * navigator's state, so a function property would fail to be written to the saved-state Bundle.
+ */
+private data class TrackerCreateResult(
+    val key: String,
+    val query: String,
+    val item: TrackSearch?,
+)
+
+private object TrackerCreateResultStore {
+    private val _result = MutableStateFlow<TrackerCreateResult?>(null)
+    val result: StateFlow<TrackerCreateResult?> = _result
+
+    fun publish(result: TrackerCreateResult) {
+        _result.value = result
+    }
+
+    fun consume(key: String) {
+        if (_result.value?.key == key) {
+            _result.value = null
+        }
+    }
+}
+
 private data class TrackerCreateScreen(
     private val mangaId: Long,
     private val serviceId: Long,
     private val initialTitle: String,
-    // KMK -->
-    private val onCreated: (TrackSearch) -> Unit,
-    // KMK <--
+    private val resultKey: String,
 ) : Screen() {
 
     @Composable
@@ -1075,8 +1110,10 @@ private data class TrackerCreateScreen(
                             isCreating = false
                             // KMK -->
                             if (createdItem != null) {
+                                TrackerCreateResultStore.publish(
+                                    TrackerCreateResult(resultKey, initialTitle, createdItem),
+                                )
                                 navigator.pop()
-                                onCreated(createdItem)
                             }
                             // KMK <--
                         }
