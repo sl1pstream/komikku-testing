@@ -55,8 +55,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip // KMK --> // KMK <--
-import androidx.compose.ui.draw.drawBehind // KMK --> // KMK <--
-import androidx.compose.ui.geometry.Offset // KMK --> // KMK <--
 import androidx.compose.ui.layout.ContentScale // KMK --> // KMK <--
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
@@ -143,7 +141,6 @@ import java.io.ByteArrayOutputStream // KMK --> // KMK <--
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
-import androidx.compose.ui.geometry.Size as DrawSize // KMK --> // KMK <--
 
 data class TrackInfoDialogHomeScreen(
     private val mangaId: Long,
@@ -991,23 +988,14 @@ private object TrackerCreateResultStore {
     }
 }
 
-/** Cuts the field outline where the reset button overlaps its top-right corner. */
+/** Cuts the whole field corner out around the reset button. */
 @Composable
 private fun FieldCornerCutout(modifier: Modifier = Modifier) {
-    val background = MaterialTheme.colorScheme.background
     Box(
-        modifier = modifier.drawBehind {
-            val stroke = 2.dp.toPx()
-            drawRect(
-                color = background,
-                size = DrawSize(size.width, stroke),
-            )
-            drawRect(
-                color = background,
-                topLeft = Offset(size.width - stroke, 0f),
-                size = DrawSize(stroke, size.height),
-            )
-        },
+        modifier = modifier
+            .offset(x = 16.dp, y = (-8).dp)
+            .size(44.dp)
+            .background(MaterialTheme.colorScheme.background, RoundedCornerShape(50)),
     )
 }
 
@@ -1028,7 +1016,7 @@ private fun ResetFieldButton(
         IconButton(
             onClick = onClick,
             modifier = Modifier
-                .offset(x = 4.dp, y = (-4).dp)
+                .offset(x = 12.dp, y = (-4).dp)
                 .size(36.dp),
         ) {
             Icon(
@@ -1103,11 +1091,7 @@ private data class TrackerCreateScreen(
                         singleLine = true,
                     )
                     if (title != initialTitle) {
-                        FieldCornerCutout(
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .size(36.dp),
-                        )
+                        FieldCornerCutout(modifier = Modifier.align(Alignment.TopEnd))
                     }
                     ResetFieldButton(
                         visible = title != initialTitle,
@@ -1128,11 +1112,7 @@ private data class TrackerCreateScreen(
                         minLines = 4,
                     )
                     if (descriptionEdited || description != state.manga?.description.orEmpty()) {
-                        FieldCornerCutout(
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .size(36.dp),
-                        )
+                        FieldCornerCutout(modifier = Modifier.align(Alignment.TopEnd))
                     }
                     ResetFieldButton(
                         visible = descriptionEdited || description != state.manga?.description.orEmpty(),
