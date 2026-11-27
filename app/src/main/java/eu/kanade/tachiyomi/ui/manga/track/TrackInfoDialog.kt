@@ -16,7 +16,9 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize // KMK --> // KMK <--
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height // KMK --> // KMK <--
+import androidx.compose.foundation.layout.offset // KMK --> // KMK <--
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size // KMK --> // KMK <--
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState // KMK --> // KMK <--
@@ -983,6 +985,29 @@ private object TrackerCreateResultStore {
     }
 }
 
+/** Reset icon sitting in a cutout at the top-right corner of a text field. */
+@Composable
+private fun ResetFieldButton(
+    contentDescription: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    IconButton(
+        onClick = onClick,
+        modifier = modifier
+            .offset(x = 8.dp, y = (-8).dp)
+            .background(MaterialTheme.colorScheme.background, RoundedCornerShape(50))
+            .size(24.dp),
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.RestartAlt,
+            contentDescription = contentDescription,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(16.dp),
+        )
+    }
+}
+
 private data class TrackerCreateScreen(
     private val mangaId: Long,
     private val serviceId: Long,
@@ -1035,54 +1060,48 @@ private data class TrackerCreateScreen(
                     .padding(MaterialTheme.padding.medium),
                 verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.medium),
             ) {
-                OutlinedTextField(
-                    value = title,
-                    onValueChange = { title = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text(stringResource(KMR.strings.local_tracker_create_title_label)) },
-                    singleLine = true,
-                    // KMK -->
-                    trailingIcon = {
-                        if (title != initialTitle) {
-                            IconButton(onClick = { title = initialTitle }) {
-                                Icon(
-                                    imageVector = Icons.Outlined.RestartAlt,
-                                    contentDescription = stringResource(KMR.strings.local_tracker_create_reset_title),
-                                )
-                            }
-                        }
-                    },
-                    // KMK <--
-                )
-                OutlinedTextField(
-                    value = description,
-                    onValueChange = {
-                        description = it
-                        descriptionEdited = true
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text(stringResource(KMR.strings.local_tracker_create_description_label)) },
-                    minLines = 4,
-                    // KMK -->
-                    trailingIcon = {
-                        if (descriptionEdited || description != state.manga?.description.orEmpty()) {
-                            IconButton(
-                                onClick = {
-                                    description = state.manga?.description.orEmpty()
-                                    descriptionEdited = false
-                                },
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.RestartAlt,
-                                    contentDescription = stringResource(
-                                        KMR.strings.local_tracker_create_reset_description,
-                                    ),
-                                )
-                            }
-                        }
-                    },
-                    // KMK <--
-                )
+                // KMK -->
+                Box {
+                    OutlinedTextField(
+                        value = title,
+                        onValueChange = { title = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text(stringResource(KMR.strings.local_tracker_create_title_label)) },
+                        singleLine = true,
+                    )
+                    if (title != initialTitle) {
+                        ResetFieldButton(
+                            contentDescription = stringResource(KMR.strings.local_tracker_create_reset_title),
+                            onClick = { title = initialTitle },
+                            modifier = Modifier.align(Alignment.TopEnd),
+                        )
+                    }
+                }
+                Box {
+                    OutlinedTextField(
+                        value = description,
+                        onValueChange = {
+                            description = it
+                            descriptionEdited = true
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text(stringResource(KMR.strings.local_tracker_create_description_label)) },
+                        minLines = 4,
+                    )
+                    if (descriptionEdited || description != state.manga?.description.orEmpty()) {
+                        ResetFieldButton(
+                            contentDescription = stringResource(
+                                KMR.strings.local_tracker_create_reset_description,
+                            ),
+                            onClick = {
+                                description = state.manga?.description.orEmpty()
+                                descriptionEdited = false
+                            },
+                            modifier = Modifier.align(Alignment.TopEnd),
+                        )
+                    }
+                }
+                // KMK <--
                 Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.padding.small)) {
                     Text(text = stringResource(KMR.strings.local_tracker_create_cover_label))
                     if (previewCover != null) {
