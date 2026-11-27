@@ -8,8 +8,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult // KMK --> //
 import androidx.activity.result.contract.ActivityResultContracts // KMK --> // KMK <--
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background // KMK --> // KMK <--
@@ -57,6 +55,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip // KMK --> // KMK <--
+import androidx.compose.ui.draw.drawBehind // KMK --> // KMK <--
+import androidx.compose.ui.geometry.Offset // KMK --> // KMK <--
 import androidx.compose.ui.layout.ContentScale // KMK --> // KMK <--
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
@@ -143,6 +143,7 @@ import java.io.ByteArrayOutputStream // KMK --> // KMK <--
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
+import androidx.compose.ui.geometry.Size as DrawSize // KMK --> // KMK <--
 
 data class TrackInfoDialogHomeScreen(
     private val mangaId: Long,
@@ -990,7 +991,27 @@ private object TrackerCreateResultStore {
     }
 }
 
-/** Animated reset icon sitting in a cutout near the top-right corner of a text field. */
+/** Cuts the field outline where the reset button overlaps its top-right corner. */
+@Composable
+private fun FieldCornerCutout(modifier: Modifier = Modifier) {
+    val background = MaterialTheme.colorScheme.background
+    Box(
+        modifier = modifier.drawBehind {
+            val stroke = 2.dp.toPx()
+            drawRect(
+                color = background,
+                size = DrawSize(size.width, stroke),
+            )
+            drawRect(
+                color = background,
+                topLeft = Offset(size.width - stroke, 0f),
+                size = DrawSize(stroke, size.height),
+            )
+        },
+    )
+}
+
+/** Reset icon that scales into view at the top-right corner of a text field. */
 @Composable
 private fun ResetFieldButton(
     visible: Boolean,
@@ -1000,22 +1021,21 @@ private fun ResetFieldButton(
 ) {
     AnimatedVisibility(
         visible = visible,
-        enter = fadeIn() + scaleIn(initialScale = 0.8f),
-        exit = fadeOut() + scaleOut(targetScale = 0.8f),
+        enter = scaleIn(initialScale = 0f),
+        exit = scaleOut(targetScale = 0f),
         modifier = modifier,
     ) {
         IconButton(
             onClick = onClick,
             modifier = Modifier
                 .offset(x = 4.dp, y = (-4).dp)
-                .background(MaterialTheme.colorScheme.background, RoundedCornerShape(50))
-                .size(32.dp),
+                .size(36.dp),
         ) {
             Icon(
                 imageVector = Icons.Outlined.RestartAlt,
                 contentDescription = contentDescription,
                 tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(20.dp),
+                modifier = Modifier.size(22.dp),
             )
         }
     }
@@ -1082,6 +1102,13 @@ private data class TrackerCreateScreen(
                         label = { Text(stringResource(KMR.strings.local_tracker_create_title_label)) },
                         singleLine = true,
                     )
+                    if (title != initialTitle) {
+                        FieldCornerCutout(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .size(36.dp),
+                        )
+                    }
                     ResetFieldButton(
                         visible = title != initialTitle,
                         contentDescription = stringResource(KMR.strings.local_tracker_create_reset_title),
@@ -1100,6 +1127,13 @@ private data class TrackerCreateScreen(
                         label = { Text(stringResource(KMR.strings.local_tracker_create_description_label)) },
                         minLines = 4,
                     )
+                    if (descriptionEdited || description != state.manga?.description.orEmpty()) {
+                        FieldCornerCutout(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .size(36.dp),
+                        )
+                    }
                     ResetFieldButton(
                         visible = descriptionEdited || description != state.manga?.description.orEmpty(),
                         contentDescription = stringResource(
