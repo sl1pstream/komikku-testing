@@ -1115,17 +1115,17 @@ private data class TrackerCreateScreen(
                         value = description,
                         onValueChange = {
                             description = it
-                            descriptionEdited = true
+                            descriptionEdited = it != state.manga?.description.orEmpty()
                         },
                         modifier = Modifier.fillMaxWidth(),
                         label = { Text(stringResource(KMR.strings.local_tracker_create_description_label)) },
                         minLines = 4,
                     )
-                    if (descriptionEdited || description != state.manga?.description.orEmpty()) {
+                    if (description != state.manga?.description.orEmpty()) {
                         FieldCornerCutout(modifier = Modifier.align(Alignment.TopEnd))
                     }
                     ResetFieldButton(
-                        visible = descriptionEdited || description != state.manga?.description.orEmpty(),
+                        visible = description != state.manga?.description.orEmpty(),
                         contentDescription = stringResource(
                             KMR.strings.local_tracker_create_reset_description,
                         ),
