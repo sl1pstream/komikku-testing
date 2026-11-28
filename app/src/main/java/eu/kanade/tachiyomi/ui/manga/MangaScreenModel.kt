@@ -308,6 +308,34 @@ class MangaScreenModel(
     }
 
     init {
+        // KMK -->
+        screenModelScope.launchIO {
+            val isTrackedLocally = runCatching {
+                getTracks.await(mangaId).any { it.trackerId == trackerManager.local.id }
+            }.getOrDefault(false)
+            if (isTrackedLocally) {
+                // Auto-sync refreshes this tracker when the title opens and already reports detailed failures.
+                if (trackPreferences.autoSyncProgressFromTrackers().get()) return@launchIO
+
+                try {
+                    trackerManager.local.testConnection()
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    withUIContext {
+                        context.toast(
+                            context.stringResource(
+                                MR.strings.track_error,
+                                trackerManager.local.name,
+                                e.message.orEmpty(),
+                            ),
+                        )
+                    }
+                }
+            }
+        }
+        // KMK <--
+
         screenModelScope.launchIO {
             getMangaAndChapters.subscribe(mangaId, applyFilter = true).distinctUntilChanged()
                 // SY -->

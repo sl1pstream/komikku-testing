@@ -35,6 +35,9 @@ class TrackerManager {
         // SY <--
     }
 
+    // KMK -->
+    val local = eu.kanade.tachiyomi.data.track.local.LocalManga(100L)
+    // KMK <--
     val mdList = MdList(MDLIST)
 
     val myAnimeList = MyAnimeList(1L)
@@ -56,29 +59,38 @@ class TrackerManager {
         listOf(comick, mangaBaka)
     // KMK <--
 
-    fun loggedInTrackers() = trackers.filter { it.isLoggedIn }
+    // KMK -->
+    fun loggedInTrackers() = (trackers + local).filter { it.isLoggedIn }
+    // KMK <--
 
-    fun loggedInTrackersFlow() = combine(trackers.map { it.isLoggedInFlow }) {
+    // KMK -->
+    fun loggedInTrackersFlow() = combine((trackers + local).map { it.isLoggedInFlow }) {
         it.mapIndexedNotNull { index, isLoggedIn ->
-            if (isLoggedIn) trackers[index] else null
+            if (isLoggedIn) (trackers + local)[index] else null
         }
     }
+    // KMK <--
 
-    fun get(id: Long) = trackers.find { it.id == id }
+    // KMK -->
+    fun get(id: Long) = (trackers + local).find { it.id == id }
+
+    fun getAllIncludingLocal(ids: Set<Long>) = (trackers + local).filter { it.id in ids }
+    // KMK <--
 
     fun getAll(ids: Set<Long>) = trackers.filter { it.id in ids }
 
     // KMK -->
     fun orderedTrackers(): List<Tracker> {
+        val allTrackers = trackers + local
         val savedIds = trackPreferences.trackerOrder().get()
             .split(',')
             .mapNotNull { it.trim().toLongOrNull() }
-        if (savedIds.isEmpty()) return trackers
+        if (savedIds.isEmpty()) return allTrackers
 
-        val trackersById = trackers.associateBy { it.id }
+        val trackersById = allTrackers.associateBy { it.id }
         val ordered = savedIds.mapNotNull { trackersById[it] }.distinctBy { it.id }
         val orderedIds = ordered.mapTo(mutableSetOf()) { it.id }
-        return ordered + trackers.filterNot { it.id in orderedIds }
+        return ordered + allTrackers.filterNot { it.id in orderedIds }
     }
 
     /**
