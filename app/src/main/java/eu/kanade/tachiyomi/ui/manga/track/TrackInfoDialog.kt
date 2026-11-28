@@ -1021,13 +1021,11 @@ private fun ResetFieldButton(
             targetScale = 0f,
             transformOrigin = TransformOrigin.Center,
         ),
-        modifier = modifier,
+        modifier = modifier.offset(x = 12.dp, y = (-4).dp),
     ) {
         IconButton(
             onClick = onClick,
-            modifier = Modifier
-                .offset(x = 12.dp, y = (-4).dp)
-                .size(36.dp),
+            modifier = Modifier.size(36.dp),
         ) {
             Icon(
                 imageVector = Icons.Outlined.RestartAlt,
